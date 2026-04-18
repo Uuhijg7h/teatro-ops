@@ -12,85 +12,91 @@ type MenuPackage = {
 
 type CateringAssignment = {
   id: string;
-  client_name: string;
-  event_type: string;
+  customer_name: string;
+  event_name: string;
   event_date: string;
-  guest_count: number;
-  food_type: string;
-  dietary_notes: string;
+  guests: number;
+  food_style: string;
+  dietary: string;
 };
 
-function fmt(n: number) {
-  return 'CAD ' + (n || 0).toLocaleString('en-CA', { minimumFractionDigits: 0 });
-}
+const fmt = (n: number) => 'NPR ' + (n || 0).toLocaleString();
 
 export default function MenuPage() {
   const supabase = createClientComponentClient();
   const [packages, setPackages] = useState<MenuPackage[]>([]);
   const [assignments, setAssignments] = useState<CateringAssignment[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchData = async () => {
       const { data: pkgs } = await supabase.from('menu_packages').select('*');
       if (pkgs) setPackages(pkgs);
+
       const { data: assigns } = await supabase
         .from('bookings')
-        .select('id,client_name,event_type,event_date,guest_count,food_type,dietary_notes')
-        .order('event_date');
-      if (assigns) setAssignments(assigns);
+        .select('id, customer_name, event_name, event_date, guests, food_style, dietary')
+        .order('event_date', { ascending: false });
+      if (assigns) setAssignments(assigns as CateringAssignment[]);
+      
+      setLoading(false);
     };
-    fetch();
+    fetchData();
   }, []);
 
-  return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Menu & Catering</h1>
+  if (loading) return <div className="p-8 text-gray-400">Loading...</div>;
 
-      {/* Packages */}
-      {packages.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          {packages.map(p => (
-            <div key={p.id} className="bg-white rounded-xl border border-gray-200 p-5">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-gray-900">{p.name}</h3>
-                <span className="text-sm font-semibold text-blue-600">{fmt(p.price_per_head)}/head</span>
-              </div>
-              <p className="text-sm text-gray-500">{p.description}</p>
+  return (
+    <div className="space-y-8">
+      {/* Menu Packages */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {packages.map((p) => (
+          <div key={p.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">{p.name}</h3>
+              <span className="text-sm font-black text-blue-600">{fmt(p.price_per_head)}<span className="text-[10px] text-gray-400 font-bold">/HEAD</span></span>
             </div>
-          ))}
-        </div>
-      )}
+            <p className="text-[12px] text-gray-500 font-medium leading-relaxed">{p.description}</p>
+          </div>
+        ))}
+      </div>
 
       {/* Catering Assignments */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h2 className="font-semibold text-gray-900 mb-4">Catering Assignments per Booking</h2>
-        {assignments.length === 0 ? (
-          <p className="text-sm text-gray-400 py-4">No catering assignments yet</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100">
-                {['BOOKING', 'EVENT DATE', 'GUESTS', 'FOOD TYPE', 'DIETARY NOTES'].map(h => (
-                  <th key={h} className="text-left py-2 px-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{h}</th>
-                ))}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 bg-[#f7f8fa]">
+          <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Catering Assignments</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-[#f7f8fa] border-b border-gray-100">
+              <tr>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Client</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Event Date</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Guests</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Food Style</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Dietary Notes</th>
               </tr>
             </thead>
-            <tbody>
-              {assignments.map(a => (
-                <tr key={a.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                  <td className="py-3 px-3">
-                    <div className="font-medium text-gray-900">{a.client_name}</div>
-                    <div className="text-xs text-gray-400">{a.event_type}</div>
+            <tbody className="divide-y divide-gray-50">
+              {assignments.map((a) => (
+                <tr key={a.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-5">
+                    <div className="text-[13px] font-bold text-blue-600">{a.customer_name}</div>
+                    <div className="text-[11px] text-gray-400 font-medium uppercase tracking-tighter">{a.event_name}</div>
                   </td>
-                  <td className="py-3 px-3 text-gray-700">{a.event_date}</td>
-                  <td className="py-3 px-3 text-gray-700 text-center">{a.guest_count}</td>
-                  <td className="py-3 px-3 text-gray-700">{a.food_type || <span className="text-gray-300">Not set</span>}</td>
-                  <td className="py-3 px-3 text-gray-500 text-xs">{a.dietary_notes || <span className="text-gray-300">None</span>}</td>
+                  <td className="px-6 py-5 text-[13px] font-bold text-gray-700">{a.event_date}</td>
+                  <td className="px-6 py-5 text-[13px] font-black text-gray-900">{a.guests}</td>
+                  <td className="px-6 py-5">
+                    <span className="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-black uppercase rounded-md tracking-wider">
+                      {a.food_style || 'Not Set'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-5 text-[12px] text-gray-500 italic">{a.dietary || 'None'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        )}
+        </div>
       </div>
     </div>
   );

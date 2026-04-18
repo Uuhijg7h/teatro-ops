@@ -2,19 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import Link from 'next/link';
 
 type Booking = {
   id: string;
-  reservation_number: string;
-  client_name: string;
-  contact_phone: string;
-  contact_email: string;
-  event_type: string;
+  customer_name: string;
+  contact_number?: string;
+  event_name: string;
   event_date: string;
-  guest_count: number;
-  hall: string;
-  manager: string;
+  guests: number;
+  venue: string;
   status: string;
 };
 
@@ -28,71 +24,68 @@ export default function GuestsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetch = async () => {
-      const { data } = await supabase.from('bookings').select('*').order('client_name');
-      if (data) setBookings(data);
+    const fetchBookings = async () => {
+      const { data } = await supabase
+        .from('bookings')
+        .select('*')
+        .order('customer_name', { ascending: true });
+      if (data) setBookings(data as Booking[]);
       setLoading(false);
     };
-    fetch();
+    fetchBookings();
   }, []);
 
-  const statusBadge = (status: string) => {
-    if (status === 'fully_paid' || status === 'Fully Paid')
-      return <span className="text-xs font-semibold text-green-700">✓ Fully Paid</span>;
-    if (status === 'deposit_paid' || status === 'Deposit Paid')
-      return <span className="text-xs font-semibold text-orange-600">◑ Deposit Paid</span>;
-    return <span className="text-xs font-semibold text-red-600">✗ Outstanding</span>;
-  };
+  if (loading) return <div className="p-8 text-gray-400">Loading...</div>;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Guests & Clients</h1>
-
-      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-        {loading ? (
-          <div className="p-8 text-center text-gray-400">Loading...</div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                {['CLIENT', 'CONTACT', 'EVENT TYPE', 'EVENT DATE', 'GUESTS', 'HALL', 'MANAGER', 'STATUS'].map(h => (
-                  <th key={h} className="text-left py-3 px-4 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{h}</th>
-                ))}
+    <div className="space-y-8">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 bg-[#f7f8fa]">
+          <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Guest Directory</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-[#f7f8fa] border-b border-gray-100">
+              <tr>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Client</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Contact Info</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Last Event</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Venue</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
               </tr>
             </thead>
-            <tbody>
-              {bookings.length === 0 ? (
-                <tr><td colSpan={8} className="py-10 text-center text-gray-400">No guests found</td></tr>
-              ) : (
-                bookings.map(b => (
-                  <tr key={b.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-sm font-bold flex-shrink-0">
-                          {initials(b.client_name)}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-gray-900">{b.client_name}</div>
-                          <div className="text-xs text-gray-400">{b.reservation_number}</div>
-                        </div>
+            <tbody className="divide-y divide-gray-50">
+              {bookings.map((b) => (
+                <tr key={b.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 text-[11px] font-black">
+                        {initials(b.customer_name)}
                       </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="text-gray-700">{b.contact_phone}</div>
-                      <div className="text-xs text-gray-400">{b.contact_email}</div>
-                    </td>
-                    <td className="py-3 px-4 text-gray-700">{b.event_type}</td>
-                    <td className="py-3 px-4 font-semibold text-gray-900">{b.event_date}</td>
-                    <td className="py-3 px-4 text-gray-700 text-center">{b.guest_count}</td>
-                    <td className="py-3 px-4 text-gray-700">{b.hall}</td>
-                    <td className="py-3 px-4 text-gray-700">{b.manager}</td>
-                    <td className="py-3 px-4">{statusBadge(b.status)}</td>
-                  </tr>
-                ))
-              )}
+                      <div className="text-[13px] font-bold text-gray-900">{b.customer_name}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="text-[13px] font-bold text-gray-700">{b.contact_number || 'N/A'}</div>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="text-[13px] font-bold text-gray-900">{b.event_date}</div>
+                    <div className="text-[11px] text-gray-400 font-medium uppercase tracking-tighter">{b.event_name}</div>
+                  </td>
+                  <td className="px-6 py-5 text-[13px] font-bold text-gray-600 uppercase tracking-tight">{b.venue}</td>
+                  <td className="px-6 py-5">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      b.status === 'confirmed' ? 'bg-green-50 text-green-600' : 
+                      'bg-red-50 text-red-600'
+                    }`}>
+                      {b.status === 'confirmed' ? 'Active' : 'Pending'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
-        )}
+        </div>
       </div>
     </div>
   );

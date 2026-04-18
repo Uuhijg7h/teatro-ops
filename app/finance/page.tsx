@@ -1,100 +1,115 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import Link from 'next/link';
 
-type Booking = {
-  id: string;
-  customer_name: string;
-  event_name: string;
-  event_date: string;
-  total_amount: number;
-  paid_amount: number;
-  status: string;
-};
+const fmt = (n: number) => '$' + (n || 0).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const fmt = (n: number) => 'NPR ' + (n || 0).toLocaleString();
+const PAY_LABELS: Record<string, string> = { fully_paid: 'Fully Paid', deposit_paid: 'Deposit Paid', outstanding: 'Outstanding' };
+const PAY_CLS: Record<string, string> = { fully_paid: 'bg-green-100 text-green-700', deposit_paid: 'bg-blue-100 text-blue-700', outstanding: 'bg-orange-100 text-orange-700' };
 
 export default function FinancePage() {
   const supabase = createClientComponentClient();
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    const loadData = async () => {
-      const { data } = await supabase
-        .from('bookings')
-        .select('*')
-        .order('event_date', { ascending: false });
-      if (data) setBookings(data as Booking[]);
+    supabase.from('bookings').select('*').order('event_date', { ascending: false }).then(({ data }) => {
+      setBookings(data || []);
       setLoading(false);
-    };
-    loadData();
+    });
   }, []);
 
+  const filtered = filter === 'all' ? bookings : bookings.filter(b => b.payment_status === filter);
   const totalRevenue = bookings.reduce((s, b) => s + (b.total_amount || 0), 0);
-  const totalCollected = bookings.reduce((s, b) => s + (b.paid_amount || 0), 0);
-  const outstanding = totalRevenue - totalCollected;
-
-  if (loading) return <div className="p-8 text-gray-400">Loading...</div>;
+  const totalDeposit = bookings.reduce((s, b) => s + (b.deposit_paid || 0), 0);
+  const balanceDue = bookings.reduce((s, b) => s + ((b.total_amount || 0) - (b.deposit_paid || 0)), 0);
+  const fullyPaidCount = bookings.filter(b => b.payment_status === 'fully_paid').length;
 
   return (
-    <div className="space-y-8">
-      {/* Finance Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Total Revenue</div>
-          <div className="text-2xl font-black text-gray-900">{fmt(totalRevenue)}</div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Total Collected</div>
-          <div className="text-2xl font-black text-green-600">{fmt(totalCollected)}</div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Total Outstanding</div>
-          <div className="text-2xl font-black text-red-600">{fmt(outstanding)}</div>
-        </div>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">Finance</h2>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 bg-[#f7f8fa]">
-          <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Payment Breakdown</h2>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-4 gap-4">
+        {[
+          { label: 'Total Revenue', value: fmt(totalRevenue), cls: 'text-green-600 bg-green-50' },
+          { label: 'Deposits Collected', value: fmt(totalDeposit), cls: 'text-blue-600 bg-blue-50' },
+          { label: 'Balance Due', value: fmt(balanceDue), cls: 'text-orange-600 bg-orange-50' },
+          { label: 'Fully Paid', value: fullyPaidCount + ' bookings', cls: 'text-purple-600 bg-purple-50' },
+        ].map(c => (
+          <div key={c.label} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{c.label}</p>
+            <p className={`text-2xl font-bold mt-2 ${c.cls.split(' ')[0]}`}>{loading ? '...' : c.value}</p>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium mt-1 inline-block ${c.cls}`}>CAD</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+        <div className="flex items-center gap-1 px-4 pt-4">
+          {[['all','All'],['outstanding','Outstanding'],['deposit_paid','Deposit Paid'],['fully_paid','Fully Paid']].map(([v,l]) => (
+            <button key={v} onClick={() => setFilter(v)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                filter === v ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'
+              }`}>{l}</button>
+          ))}
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-[#f7f8fa] border-b border-gray-100">
-              <tr>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Client</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Event Date</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Total Amount</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Paid Amount</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Balance</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
+        <div className="overflow-x-auto mt-4">
+          <table className="w-full">
+            <thead>
+              <tr className="text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                <th className="px-6 py-3 text-left">Booking</th>
+                <th className="px-6 py-3 text-left">Client</th>
+                <th className="px-6 py-3 text-left">Event Date</th>
+                <th className="px-6 py-3 text-right">Total (CAD)</th>
+                <th className="px-6 py-3 text-right">Deposit (CAD)</th>
+                <th className="px-6 py-3 text-right">Balance (CAD)</th>
+                <th className="px-6 py-3 text-left">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
-              {bookings.map((b) => (
-                <tr key={b.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-5">
-                    <div className="text-[13px] font-bold text-blue-600">{b.customer_name}</div>
-                    <div className="text-[11px] text-gray-400 font-medium uppercase tracking-tighter">{b.event_name}</div>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400 text-sm">Loading...</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400 text-sm">No records found.</td></tr>
+              ) : filtered.map((b, i) => (
+                <tr key={b.id} className={`hover:bg-gray-50 ${i !== filtered.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                  <td className="px-6 py-4">
+                    <Link href={`/bookings/${b.id}`} className="font-medium text-gray-900 hover:underline text-sm">
+                      {b.event_type || 'Event'}
+                    </Link>
                   </td>
-                  <td className="px-6 py-5 text-[13px] font-bold text-gray-700">{b.event_date}</td>
-                  <td className="px-6 py-5 text-[13px] font-black text-gray-900 text-right">{fmt(b.total_amount)}</td>
-                  <td className="px-6 py-5 text-[13px] font-black text-green-600 text-right">{fmt(b.paid_amount)}</td>
-                  <td className="px-6 py-5 text-[13px] font-black text-red-600 text-right">{fmt(b.total_amount - b.paid_amount)}</td>
-                  <td className="px-6 py-5">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                      b.status === 'confirmed' ? 'bg-green-50 text-green-600' : 
-                      b.paid_amount > 0 ? 'bg-blue-50 text-blue-600' : 
-                      'bg-red-50 text-red-600'
-                    }`}>
-                      {b.status === 'confirmed' ? '✓ Paid' : b.paid_amount > 0 ? '◑ Deposit' : '✗ Outstanding'}
+                  <td className="px-6 py-4 text-sm text-gray-600">{b.client_name}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {b.event_date ? new Date(b.event_date + 'T00:00:00').toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                  </td>
+                  <td className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">{fmt(b.total_amount)}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 text-right">{fmt(b.deposit_paid)}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-orange-600 text-right">{fmt((b.total_amount || 0) - (b.deposit_paid || 0))}</td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${PAY_CLS[b.payment_status] || 'bg-gray-100 text-gray-600'}`}>
+                      {PAY_LABELS[b.payment_status] || b.payment_status}
                     </span>
                   </td>
                 </tr>
               ))}
             </tbody>
+            {!loading && filtered.length > 0 && (
+              <tfoot>
+                <tr className="border-t-2 border-gray-200 bg-gray-50">
+                  <td colSpan={3} className="px-6 py-3 text-sm font-semibold text-gray-700">Totals ({filtered.length} bookings)</td>
+                  <td className="px-6 py-3 text-sm font-bold text-gray-900 text-right">{fmt(filtered.reduce((s,b)=>s+(b.total_amount||0),0))}</td>
+                  <td className="px-6 py-3 text-sm font-bold text-gray-900 text-right">{fmt(filtered.reduce((s,b)=>s+(b.deposit_paid||0),0))}</td>
+                  <td className="px-6 py-3 text-sm font-bold text-orange-600 text-right">{fmt(filtered.reduce((s,b)=>s+((b.total_amount||0)-(b.deposit_paid||0)),0))}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>

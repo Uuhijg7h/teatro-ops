@@ -6,162 +6,151 @@ import Link from 'next/link';
 
 type Booking = {
   id: string;
-  reservation_number: string;
-  client_name: string;
-  event_type: string;
-  contact_phone: string;
-  contact_email: string;
+  customer_name: string;
+  contact_number?: string;
+  event_name: string;
   event_date: string;
-  booked_on: string;
-  hall: string;
-  manager: string;
-  guest_count: number;
+  created_at: string;
+  venue: string;
+  guests: number;
   total_amount: number;
-  amount_paid: number;
+  paid_amount: number;
   status: string;
 };
-
-function fmt(n: number) {
-  return 'CAD ' + (n || 0).toLocaleString('en-CA', { minimumFractionDigits: 0 });
-}
 
 export default function BookingPage() {
   const supabase = createClientComponentClient();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('All');
 
   useEffect(() => {
     const fetchBookings = async () => {
       const { data } = await supabase
         .from('bookings')
         .select('*')
-        .order('event_date', { ascending: true });
-      if (data) setBookings(data);
+        .order('event_date', { ascending: false });
+      if (data) setBookings(data as Booking[]);
       setLoading(false);
     };
     fetchBookings();
   }, []);
 
-  const filtered = bookings.filter(b => {
-    const matchSearch =
-      !search ||
-      b.client_name?.toLowerCase().includes(search.toLowerCase()) ||
-      b.contact_phone?.includes(search) ||
-      b.contact_email?.toLowerCase().includes(search.toLowerCase()) ||
-      b.reservation_number?.toLowerCase().includes(search.toLowerCase());
-
-    const matchFilter =
-      filter === 'all' ||
-      (filter === 'paid' && (b.status === 'fully_paid' || b.status === 'Fully Paid')) ||
-      (filter === 'deposit' && (b.status === 'deposit_paid' || b.status === 'Deposit Paid')) ||
-      (filter === 'outstanding' && (b.status === 'outstanding' || b.status === 'Outstanding'));
-
-    return matchSearch && matchFilter;
+  const filteredBookings = bookings.filter(b => {
+    const matchesSearch = 
+      b.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
+      b.event_name?.toLowerCase().includes(search.toLowerCase());
+    
+    if (filter === 'All') return matchesSearch;
+    if (filter === 'Paid') return matchesSearch && b.status === 'confirmed';
+    if (filter === 'Deposit') return matchesSearch && b.paid_amount > 0 && b.paid_amount < b.total_amount;
+    if (filter === 'Outstanding') return matchesSearch && b.paid_amount === 0;
+    return matchesSearch;
   });
 
-  const allCount = bookings.length;
-  const paidCount = bookings.filter(b => b.status === 'fully_paid' || b.status === 'Fully Paid').length;
-  const depositCount = bookings.filter(b => b.status === 'deposit_paid' || b.status === 'Deposit Paid').length;
-  const outstandingCount = bookings.filter(b => b.status === 'outstanding' || b.status === 'Outstanding').length;
+  const fmt = (n: number) => 'NPR ' + (n || 0).toLocaleString();
 
-  const statusBadge = (status: string) => {
-    if (status === 'fully_paid' || status === 'Fully Paid')
-      return <span className="text-xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">✓ Fully Paid</span>;
-    if (status === 'deposit_paid' || status === 'Deposit Paid')
-      return <span className="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">◑ Deposit Paid</span>;
-    return <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">✗ Outstanding</span>;
-  };
+  if (loading) return <div className="p-8 text-gray-400">Loading...</div>;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">All Bookings</h1>
-        <Link
-          href="/booking/new"
-          className="flex items-center gap-2 bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold px-4 py-2 rounded-md transition-colors"
-        >
-          <span>＋</span> NEW BOOKING
-        </Link>
-      </div>
-
-      {/* Search + Filters */}
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
-          <input
-            type="text"
-            placeholder="Search name, phone, email, res#"
+    <div className="space-y-6">
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-wrap items-center justify-between gap-4">
+        <div className="relative flex-1 min-w-[300px]">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">🔍</span>
+          <input 
+            type="text" 
+            placeholder="Search name, phone, email, res#" 
+            className="w-full pl-12 pr-4 py-2.5 bg-[#f7f8fa] border-none rounded-lg text-sm focus:ring-2 focus:ring-blue-500 transition-all outline-none text-[#1a1a1a]"
             value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-8 pr-4 py-2 text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-gray-400"
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
-          {[
-            { key: 'all', label: `All (${allCount})` },
-            { key: 'paid', label: `✓ Paid (${paidCount})` },
-            { key: 'deposit', label: `◑ Deposit (${depositCount})` },
-            { key: 'outstanding', label: `✗ Outstanding (${outstandingCount})` },
-          ].map(f => (
+        
+        <div className="flex bg-[#f7f8fa] p-1 rounded-xl">
+          {['All', 'Paid', 'Deposit', 'Outstanding'].map((f) => (
             <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                filter === f.key
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-6 py-2 rounded-lg text-xs font-bold transition-all ${
+                filter === f 
+                  ? 'bg-gray-900 text-white shadow-md' 
+                  : 'text-gray-500 hover:text-gray-900'
               }`}
             >
-              {f.label}
+              {f} ({
+                f === 'All' ? bookings.length : 
+                f === 'Paid' ? bookings.filter(b => b.status === 'confirmed').length :
+                f === 'Deposit' ? bookings.filter(b => b.paid_amount > 0 && b.paid_amount < b.total_amount).length :
+                bookings.filter(b => b.paid_amount === 0).length
+              })
             </button>
           ))}
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-        {loading ? (
-          <div className="p-8 text-center text-gray-400">Loading...</div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                {['RES #', 'CLIENT NAME', 'CONTACT', 'EVENT DATE', 'BOOKED ON', 'HALL', 'MANAGER', 'GUESTS', 'TOTAL', 'DEPOSIT', 'STATUS'].map(h => (
-                  <th key={h} className="text-left py-3 px-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
-                ))}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-[#f7f8fa] border-b border-gray-100">
+              <tr>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Res #</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Client Name</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Contact</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Event Date</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Booked On</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hall</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Guests</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Deposit</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
               </tr>
             </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={11} className="py-10 text-center text-gray-400">No bookings found</td></tr>
-              ) : (
-                filtered.map(b => (
-                  <tr key={b.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                    <td className="py-3 px-3 text-gray-500 text-xs font-mono">{b.reservation_number || 'T' + b.id?.slice(0,4).toUpperCase()}</td>
-                    <td className="py-3 px-3">
-                      <Link href={`/booking/${b.id}`} className="font-semibold text-blue-600 hover:underline">{b.client_name}</Link>
-                      <div className="text-xs text-gray-400">{b.event_type}</div>
-                    </td>
-                    <td className="py-3 px-3">
-                      <div className="text-gray-700">{b.contact_phone}</div>
-                      <div className="text-xs text-gray-400">{b.contact_email}</div>
-                    </td>
-                    <td className="py-3 px-3 font-semibold text-gray-900 whitespace-nowrap">{b.event_date}</td>
-                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap">{b.booked_on || b.created_at?.split('T')[0]}</td>
-                    <td className="py-3 px-3 text-gray-700">{b.hall}</td>
-                    <td className="py-3 px-3 text-gray-700">{b.manager}</td>
-                    <td className="py-3 px-3 text-gray-700 text-center">{b.guest_count}</td>
-                    <td className="py-3 px-3 font-semibold text-gray-900">{fmt(b.total_amount)}</td>
-                    <td className="py-3 px-3 font-semibold text-green-700">{fmt(b.amount_paid)}</td>
-                    <td className="py-3 px-3">{statusBadge(b.status)}</td>
-                  </tr>
-                ))
-              )}
+            <tbody className="divide-y divide-gray-50">
+              {filteredBookings.map((b) => (
+                <tr key={b.id} className="hover:bg-gray-50 transition-colors group cursor-pointer">
+                  <td className="px-6 py-5 text-[13px] font-bold text-gray-400">
+                    {`T${b.id.slice(0,4).toUpperCase()}`}
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="font-bold text-blue-600 hover:underline">{b.customer_name}</div>
+                    <div className="text-[11px] text-gray-400 font-medium mt-0.5 uppercase tracking-tighter">{b.event_name}</div>
+                  </td>
+                  <td className="px-6 py-5 text-[13px] font-bold text-gray-700">
+                    {b.contact_number || 'N/A'}
+                  </td>
+                  <td className="px-6 py-5 text-[13px] font-black text-gray-700">
+                    {b.event_date}
+                  </td>
+                  <td className="px-6 py-5 text-[13px] text-gray-400">
+                    {new Date(b.created_at).toISOString().split('T')[0]}
+                  </td>
+                  <td className="px-6 py-5 text-[13px] font-bold text-gray-600 uppercase tracking-tight">
+                    {b.venue}
+                  </td>
+                  <td className="px-6 py-5 text-[13px] font-bold text-gray-700">
+                    {b.guests}
+                  </td>
+                  <td className="px-6 py-5 text-[13px] font-black text-gray-900">
+                    {fmt(b.total_amount)}
+                  </td>
+                  <td className="px-6 py-5 text-[13px] font-black text-gray-500">
+                    {fmt(b.paid_amount)}
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      b.status === 'confirmed' ? 'bg-green-50 text-green-600' : 
+                      b.paid_amount > 0 ? 'bg-blue-50 text-blue-600' : 
+                      'bg-red-50 text-red-600'
+                    }`}>
+                      {b.status === 'confirmed' ? '✓ Paid' : b.paid_amount > 0 ? '◑ Deposit' : '✗ Outstanding'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
-        )}
+        </div>
       </div>
     </div>
   );

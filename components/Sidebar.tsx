@@ -16,7 +16,7 @@ export default function Sidebar() {
   };
 
   const navItem = (href: string, icon: string, label: string) => {
-    const active = pathname === href;
+    const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
     return (
       <Link
         key={href}
@@ -42,24 +42,20 @@ export default function Sidebar() {
           <span className="font-bold text-sm tracking-widest text-gray-800 uppercase">BanquetPro</span>
         </div>
       </div>
-
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-2">Main</p>
         {navItem('/dashboard', '📊', 'Dashboard')}
-        {navItem('/booking', '📋', 'Bookings')}
+        {navItem('/bookings', '📋', 'Bookings')}
         {navItem('/calendar', '📅', 'Calendar')}
-
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-2 mt-4">Management</p>
         {navItem('/guests', '👥', 'Guests & Clients')}
         {navItem('/menu', '🍽', 'Menu & Catering')}
         {navItem('/staff', '👔', 'Staff')}
         {navItem('/finance', '💰', 'Finance')}
-
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-2 mt-4">Reports</p>
         {navItem('/beo', '📄', 'BEO Documents')}
       </nav>
-
       {/* Sign Out */}
       <div className="p-3 border-t border-gray-200">
         <button

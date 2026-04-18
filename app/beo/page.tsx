@@ -1,91 +1,100 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import Link from 'next/link';
-
-type Booking = {
-  id: string;
-  reservation_number: string;
-  client_name: string;
-  event_type: string;
-  event_date: string;
-  hall: string;
-  guest_count: number;
-  manager: string;
-  status: string;
-};
+import { useSearchParams } from 'next/navigation';
 
 export default function BEOPage() {
+  const searchParams = useSearchParams();
+  const id = searchParams?.get('id');
   const supabase = createClientComponentClient();
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase.from('bookings').select('*').order('event_date');
-      if (data) setBookings(data);
+    if (!id) {
       setLoading(false);
-    };
-    load();
-  }, []);
+      return;
+    }
+    supabase.from('bookings').select('*').eq('id', id).single().then(({ data }) => {
+      setBooking(data);
+      setLoading(false);
+    });
+  }, [id]);
 
-  const statusBadge = (status: string) => {
-    if (status === 'fully_paid' || status === 'Fully Paid')
-      return <span className="text-xs font-semibold text-green-700">✓ Fully Paid</span>;
-    if (status === 'deposit_paid' || status === 'Deposit Paid')
-      return <span className="text-xs font-semibold text-orange-600">◑ Deposit Paid</span>;
-    return <span className="text-xs font-semibold text-red-600">✗ Outstanding</span>;
-  };
+  if (loading) return <div className="p-6 text-center text-gray-400">Loading...</div>;
+  if (!id) return <div className="p-6"><p className="text-gray-500">Please select a booking to view its BEO.</p></div>;
+  if (!booking) return <div className="p-6 text-center text-gray-400">Booking not found.</div>;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">BEO Documents</h1>
-
-      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-        <div className="p-5 border-b border-gray-100">
-          <p className="text-sm text-gray-500">All BEO Documents — Click any booking to view & print BEO</p>
-        </div>
-        {loading ? (
-          <div className="p-8 text-center text-gray-400">Loading...</div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                {['RES #','CLIENT NAME','EVENT TYPE','EVENT DATE','HALL','GUESTS','MANAGER','STATUS','BEO'].map(h => (
-                  <th key={h} className="text-left py-3 px-4 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {bookings.length === 0 ? (
-                <tr><td colSpan={9} className="py-10 text-center text-gray-400">No bookings found</td></tr>
-              ) : (
-                bookings.map(b => (
-                  <tr key={b.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                    <td className="py-3 px-4 text-gray-500 text-xs font-mono">{b.reservation_number || b.id?.slice(0,6)}</td>
-                    <td className="py-3 px-4 font-semibold text-gray-900">{b.client_name}</td>
-                    <td className="py-3 px-4 text-gray-700">{b.event_type}</td>
-                    <td className="py-3 px-4 text-gray-700">{b.event_date}</td>
-                    <td className="py-3 px-4 text-gray-700">{b.hall}</td>
-                    <td className="py-3 px-4 text-gray-700 text-center">{b.guest_count}</td>
-                    <td className="py-3 px-4 text-gray-700">{b.manager}</td>
-                    <td className="py-3 px-4">{statusBadge(b.status)}</td>
-                    <td className="py-3 px-4">
-                      <Link
-                        href={`/booking/${b.id}?print=beo`}
-                        className="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-700 text-white text-xs font-semibold px-3 py-1.5 rounded-md transition-colors"
-                      >
-                        <span>📄</span> Open BEO
-                      </Link>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        )}
+    <div className="max-w-4xl mx-auto p-8 bg-white">
+      {/* Header */}
+      <div className="border-b-4 border-gray-900 pb-4 mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">BANQUET EVENT ORDER</h1>
+        <p className="text-sm text-gray-500 mt-1">Teatro Banquet Hall</p>
       </div>
+
+      {/* Event Info */}
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        <div>
+          <p className="text-xs font-bold text-gray-400 uppercase mb-2">Event Information</p>
+          <p className="font-semibold text-gray-900 text-lg">{booking.event_type || 'Event'}</p>
+          <p className="text-sm text-gray-600">Date: {booking.event_date ? new Date(booking.event_date + 'T00:00:00').toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' }) : '-'}</p>
+          <p className="text-sm text-gray-600">Time: {booking.start_time || '-'} - {booking.end_time || '-'}</p>
+          <p className="text-sm text-gray-600">Hall: {booking.hall || '-'}</p>
+          <p className="text-sm text-gray-600">Guests: {booking.guests || '-'}</p>
+        </div>
+        <div>
+          <p className="text-xs font-bold text-gray-400 uppercase mb-2">Client Information</p>
+          <p className="font-semibold text-gray-900">{booking.client_name}</p>
+          {booking.email && <p className="text-sm text-gray-600">{booking.email}</p>}
+          {booking.phone && <p className="text-sm text-gray-600">{booking.phone}</p>}
+          <p className="text-sm text-gray-600 mt-2">On-Site Contact: {booking.onsite_contact || 'Same as booking'}</p>
+        </div>
+      </div>
+
+      {/* Food & Beverage */}
+      <div className="border-t border-gray-200 pt-4 mb-6">
+        <p className="text-xs font-bold text-gray-400 uppercase mb-2">Food & Beverage</p>
+        <p className="text-sm text-gray-700">Style: {booking.food_style || 'TBD'}</p>
+        <p className="text-sm text-gray-700">Apps/Beverages: {booking.apps || 'None'}</p>
+        {booking.dietary_notes && <p className="text-sm text-gray-700 mt-1">Dietary Notes: {booking.dietary_notes}</p>}
+      </div>
+
+      {/* Setup */}
+      <div className="border-t border-gray-200 pt-4 mb-6">
+        <p className="text-xs font-bold text-gray-400 uppercase mb-2">Setup</p>
+        <p className="text-sm text-gray-700">Setup Time: {booking.setup_time || 'TBD'}</p>
+      </div>
+
+      {/* Staff */}
+      <div className="border-t border-gray-200 pt-4 mb-6">
+        <p className="text-xs font-bold text-gray-400 uppercase mb-2">Staff Assignment</p>
+        <p className="text-sm text-gray-700">Booking Manager: {booking.manager_name || '-'}</p>
+        <p className="text-sm text-gray-700">On-Site Manager: {booking.onsite_mgr_name || 'Same as booking manager'}</p>
+      </div>
+
+      {/* Notes */}
+      {booking.notes && (
+        <div className="border-t border-gray-200 pt-4 mb-6">
+          <p className="text-xs font-bold text-gray-400 uppercase mb-2">Internal Notes</p>
+          <p className="text-sm text-gray-700 whitespace-pre-wrap">{booking.notes}</p>
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="border-t-2 border-gray-900 pt-4 mt-8 text-center">
+        <p className="text-xs text-gray-400">BEO ID: {booking.id} | Generated: {new Date().toLocaleString('en-CA')}</p>
+        <button onClick={() => window.print()} className="mt-4 px-6 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-700 print:hidden">
+          Print BEO
+        </button>
+      </div>
+
+      <style jsx global>{`
+        @media print {
+          body { margin: 0; padding: 0; }
+          .print\\:hidden { display: none !important; }
+        }
+      `}</style>
     </div>
   );
 }

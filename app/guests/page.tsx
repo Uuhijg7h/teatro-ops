@@ -1,101 +1,98 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import Link from 'next/link';
 
+type Booking = {
+  id: string;
+  reservation_number: string;
+  client_name: string;
+  contact_phone: string;
+  contact_email: string;
+  event_type: string;
+  event_date: string;
+  guest_count: number;
+  hall: string;
+  manager: string;
+  status: string;
+};
+
+function initials(name: string) {
+  return name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '??';
+}
+
 export default function GuestsPage() {
-  const [bookings, setBookings] = useState<any[]>([]);
+  const supabase = createClientComponentClient();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchBookings();
+    const fetch = async () => {
+      const { data } = await supabase.from('bookings').select('*').order('client_name');
+      if (data) setBookings(data);
+      setLoading(false);
+    };
+    fetch();
   }, []);
 
-  const fetchBookings = async () => {
-    const res = await fetch('/api/bookings');
-    const data = await res.json();
-    setBookings(data);
-  };
-
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-  };
-
-  const getStatusBadge = (status: string) => {
-    if (status === 'paid') return 'bg-green-100 text-green-800';
-    if (status === 'deposit') return 'bg-yellow-100 text-yellow-800';
-    return 'bg-red-100 text-red-800';
-  };
-
-  const getStatusText = (status: string) => {
-    if (status === 'paid') return 'Fully Paid';
-    if (status === 'deposit') return 'Deposit Paid';
-    return 'Outstanding';
+  const statusBadge = (status: string) => {
+    if (status === 'fully_paid' || status === 'Fully Paid')
+      return <span className="text-xs font-semibold text-green-700">✓ Fully Paid</span>;
+    if (status === 'deposit_paid' || status === 'Deposit Paid')
+      return <span className="text-xs font-semibold text-orange-600">◑ Deposit Paid</span>;
+    return <span className="text-xs font-semibold text-red-600">✗ Outstanding</span>;
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-gray-900">Teatro Banquet Hall</Link>
-          <div className="flex gap-4">
-            <Link href="/" className="text-gray-600 hover:text-gray-900">Home</Link>
-            <Link href="/dashboard" className="text-gray-600 hover:text-gray-900">Dashboard</Link>
-          </div>
-        </div>
-      </nav>
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Guests & Clients</h1>
 
-      <div className="p-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Guests & Clients</h1>
-
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px]">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3">Client</th>
-                  <th className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3">Contact</th>
-                  <th className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3">Event Type</th>
-                  <th className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3">Event Date</th>
-                  <th className="text-center text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3">Guests</th>
-                  <th className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3">Hall</th>
-                  <th className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3">Manager</th>
-                  <th className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-3">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {bookings.map((booking) => (
-                  <tr key={booking.id} className="hover:bg-gray-50 cursor-pointer">
-                    <td className="px-4 py-3">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+        {loading ? (
+          <div className="p-8 text-center text-gray-400">Loading...</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50">
+                {['CLIENT', 'CONTACT', 'EVENT TYPE', 'EVENT DATE', 'GUESTS', 'HALL', 'MANAGER', 'STATUS'].map(h => (
+                  <th key={h} className="text-left py-3 px-4 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {bookings.length === 0 ? (
+                <tr><td colSpan={8} className="py-10 text-center text-gray-400">No guests found</td></tr>
+              ) : (
+                bookings.map(b => (
+                  <tr key={b.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                    <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-semibold text-sm">
-                          {getInitials(booking.name)}
+                        <div className="w-9 h-9 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                          {initials(b.client_name)}
                         </div>
                         <div>
-                          <div className="font-semibold text-sm">{booking.name}</div>
-                          <div className="text-xs text-gray-500">{booking.resNo || 'N/A'}</div>
+                          <div className="font-semibold text-gray-900">{b.client_name}</div>
+                          <div className="text-xs text-gray-400">{b.reservation_number}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm">{booking.phone}</div>
-                      <div className="text-xs text-gray-500">{booking.email}</div>
+                    <td className="py-3 px-4">
+                      <div className="text-gray-700">{b.contact_phone}</div>
+                      <div className="text-xs text-gray-400">{b.contact_email}</div>
                     </td>
-                    <td className="px-4 py-3 text-sm">{booking.type}</td>
-                    <td className="px-4 py-3 text-sm">{booking.eventDate}</td>
-                    <td className="px-4 py-3 text-center text-sm">{booking.guests || 0}</td>
-                    <td className="px-4 py-3 text-sm">{booking.hall}</td>
-                    <td className="px-4 py-3 text-sm">{booking.manager || 'N/A'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-1 rounded ${getStatusBadge(booking.status)}`}>
-                        {getStatusText(booking.status)}
-                      </span>
-                    </td>
+                    <td className="py-3 px-4 text-gray-700">{b.event_type}</td>
+                    <td className="py-3 px-4 font-semibold text-gray-900">{b.event_date}</td>
+                    <td className="py-3 px-4 text-gray-700 text-center">{b.guest_count}</td>
+                    <td className="py-3 px-4 text-gray-700">{b.hall}</td>
+                    <td className="py-3 px-4 text-gray-700">{b.manager}</td>
+                    <td className="py-3 px-4">{statusBadge(b.status)}</td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                ))
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

@@ -1,141 +1,126 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import Link from 'next/link';
 
-type Booking = {
-  id: string;
-  customer_name: string;
-  event_name: string;
-  event_date: string;
-  venue: string;
-  status: string;
-  guests: number;
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const STATUS_CLS: Record<string,string> = {
+  confirmed: 'bg-green-500',
+  tentative: 'bg-yellow-400',
+  cancelled: 'bg-red-400',
+  completed: 'bg-gray-400',
 };
-
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function CalendarPage() {
   const supabase = createClientComponentClient();
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selected, setSelected] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchBookings = async () => {
-      const { data } = await supabase
-        .from('bookings')
-        .select('id, customer_name, event_name, event_date, venue, status, guests');
-      if (data) setBookings(data as Booking[]);
-    };
-    fetchBookings();
+    supabase.from('bookings').select('id,client_name,event_type,event_date,hall,status,guests').then(({ data }) => {
+      setBookings(data || []);
+    });
   }, []);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const today = new Date();
 
-  const bookingMap: { [date: string]: Booking[] } = {};
+  const bookingsByDate: Record<string, any[]> = {};
   bookings.forEach(b => {
-    if (!bookingMap[b.event_date]) bookingMap[b.event_date] = [];
-    bookingMap[b.event_date].push(b);
+    if (b.event_date) {
+      const d = b.event_date.split('T')[0];
+      if (!bookingsByDate[d]) bookingsByDate[d] = [];
+      bookingsByDate[d].push(b);
+    }
   });
-
-  const cells = [
-    ...Array(firstDay).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1)
-  ];
 
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+  const today = new Date().toISOString().split('T')[0];
 
-  const upcoming = bookings
-    .filter(b => b.event_date >= today.toISOString().split('T')[0])
-    .sort((a, b) => a.event_date.localeCompare(b.event_date))
-    .slice(0, 5);
+  const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  while (cells.length % 7 !== 0) cells.push(null);
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8">
-      {/* Calendar Grid */}
-      <div className="flex-1 space-y-4">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
-              <span className="text-xl">📅</span> {MONTHS[month]} {year}
-            </h2>
-            <div className="flex bg-[#f7f8fa] p-1 rounded-lg border border-gray-100">
-              <button onClick={prevMonth} className="px-3 py-1.5 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600 font-black">‹</button>
-              <button onClick={() => setCurrentDate(new Date())} className="px-4 py-1.5 text-[10px] font-black uppercase tracking-widest hover:bg-white hover:shadow-sm rounded-md transition-all text-blue-600">Today</button>
-              <button onClick={nextMonth} className="px-3 py-1.5 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600 font-black">›</button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-7 gap-px bg-gray-100 border border-gray-100 rounded-lg overflow-hidden">
-            {DAYS.map(day => (
-              <div key={day} className="bg-[#f7f8fa] py-3 text-center">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{day}</span>
-              </div>
-            ))}
-            {cells.map((day, i) => {
-              const dateStr = day ? `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : null;
-              const isToday = day && day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
-              const dayBookings = dateStr ? bookingMap[dateStr] : [];
-
-              return (
-                <div key={i} className={`bg-white min-h-[120px] p-2 transition-colors hover:bg-gray-50 ${!day ? 'bg-[#fcfcfc]' : ''}`}>
-                  {day && (
-                    <>
-                      <div className="flex justify-between items-start mb-1">
-                        <span className={`text-[12px] font-black px-1.5 py-0.5 rounded-md ${isToday ? 'bg-blue-600 text-white' : 'text-gray-900'}`}>
-                          {day}
-                        </span>
-                      </div>
-                      <div className="space-y-1">
-                        {dayBookings.map(b => (
-                          <div key={b.id} className="text-[10px] p-1.5 rounded bg-blue-50 border border-blue-100 text-blue-700 font-bold leading-tight truncate">
-                            {b.customer_name}
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+    <div className="p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">Calendar</h2>
+        <div className="flex items-center gap-3">
+          <button onClick={prevMonth} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600">&larr;</button>
+          <span className="text-base font-semibold text-gray-900 w-40 text-center">{MONTHS[month]} {year}</span>
+          <button onClick={nextMonth} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600">&rarr;</button>
         </div>
       </div>
 
-      {/* Sidebar: Upcoming Events */}
-      <div className="w-full lg:w-80 space-y-6">
-        <h2 className="text-sm font-black text-gray-900 uppercase tracking-tight">Upcoming Events</h2>
-        <div className="space-y-4">
-          {upcoming.map(b => (
-            <div key={b.id} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md cursor-pointer">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-50 flex flex-col items-center justify-center text-blue-600">
-                  <span className="text-[9px] font-black uppercase tracking-tighter">{new Date(b.event_date).toLocaleString('en-US', { month: 'short' })}</span>
-                  <span className="text-[14px] font-black leading-none">{new Date(b.event_date).getDate()}</span>
-                </div>
-                <div>
-                  <div className="text-[13px] font-black text-gray-900 leading-tight">{b.customer_name}</div>
-                  <div className="text-[11px] text-gray-400 font-medium uppercase tracking-tighter">{b.event_name}</div>
-                </div>
-              </div>
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">📍 {b.venue}</span>
-                <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{b.guests} Guests</span>
-              </div>
-            </div>
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="grid grid-cols-7">
+          {DAYS.map(d => (
+            <div key={d} className="py-3 text-center text-xs font-semibold text-gray-400 uppercase border-b border-gray-100">{d}</div>
           ))}
-          {upcoming.length === 0 && (
-            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-200">
-              <span className="text-gray-400 text-xs font-medium uppercase tracking-widest">No upcoming events</span>
-            </div>
-          )}
         </div>
+        <div className="grid grid-cols-7">
+          {cells.map((day, idx) => {
+            if (!day) return <div key={`empty-${idx}`} className="min-h-[100px] border-b border-r border-gray-100 bg-gray-50" />;
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const dayBookings = bookingsByDate[dateStr] || [];
+            const isToday = dateStr === today;
+            return (
+              <div key={dateStr}
+                onClick={() => setSelected(dayBookings)}
+                className={`min-h-[100px] border-b border-r border-gray-100 p-2 cursor-pointer hover:bg-blue-50 transition-colors ${
+                  isToday ? 'bg-blue-50' : ''
+                }`}>
+                <span className={`text-sm font-medium ${
+                  isToday ? 'bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center' : 'text-gray-700'
+                }`}>{day}</span>
+                <div className="mt-1 space-y-0.5">
+                  {dayBookings.slice(0, 3).map(b => (
+                    <div key={b.id} className={`text-xs px-1.5 py-0.5 rounded text-white truncate ${STATUS_CLS[b.status] || 'bg-gray-400'}`}>
+                      {b.event_type || b.client_name}
+                    </div>
+                  ))}
+                  {dayBookings.length > 3 && <div className="text-xs text-gray-400">+{dayBookings.length - 3} more</div>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Selected day bookings */}
+      {selected.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-gray-900">{selected.length} booking{selected.length > 1 ? 's' : ''} on this day</h3>
+            <button onClick={() => setSelected([])} className="text-gray-400 hover:text-gray-600 text-sm">Close</button>
+          </div>
+          <div className="space-y-2">
+            {selected.map(b => (
+              <Link key={b.id} href={`/bookings/${b.id}`}
+                className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
+                <div>
+                  <p className="font-medium text-gray-900 text-sm">{b.event_type || 'Event'}</p>
+                  <p className="text-xs text-gray-500">{b.client_name} &bull; {b.hall || 'TBD'} &bull; {b.guests || 0} guests</p>
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded text-white ${STATUS_CLS[b.status] || 'bg-gray-400'}`}>{b.status}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Legend */}
+      <div className="flex items-center gap-4">
+        {[['confirmed','bg-green-500'],['tentative','bg-yellow-400'],['cancelled','bg-red-400'],['completed','bg-gray-400']].map(([s,c]) => (
+          <div key={s} className="flex items-center gap-1.5">
+            <div className={`w-3 h-3 rounded ${c}`} />
+            <span className="text-xs text-gray-500 capitalize">{s}</span>
+          </div>
+        ))}
       </div>
     </div>
   );

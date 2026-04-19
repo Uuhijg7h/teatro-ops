@@ -10,6 +10,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const supabase = createClientComponentClient();
 
   useEffect(() => {
@@ -62,6 +64,22 @@ export default function SettingsPage() {
   }, []);
 
   async function saveBusinessSettings() {
+    setMessage('');
+    setError('');
+
+    if (!vm.business.businessName.trim()) {
+      setError('Business name is required.');
+      return;
+    }
+    if (!vm.business.address.trim()) {
+      setError('Address is required.');
+      return;
+    }
+    if (vm.business.taxRate < 0 || vm.business.gratuityRate < 0) {
+      setError('Tax and gratuity must be zero or greater.');
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = {
@@ -76,8 +94,12 @@ export default function SettingsPage() {
         timezone: vm.business.timezone,
       };
 
-      const { data } = await supabase.from('organizations').upsert(payload).select('id').single();
+      const { data, error } = await supabase.from('organizations').upsert(payload).select('id').single();
+      if (error) throw error;
       if (data?.id) setOrganizationId(data.id);
+      setMessage('Settings saved successfully.');
+    } catch {
+      setError('Could not save settings. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -97,9 +119,14 @@ export default function SettingsPage() {
         </button>
       </div>
 
+      {message ? <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{message}</div> : null}
+      {error ? <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Business Profile</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-gray-900">Business Profile</h2>
+          </div>
           {loading ? <div className="text-sm text-gray-400">Loading business settings...</div> : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
@@ -154,8 +181,9 @@ export default function SettingsPage() {
       </div>
 
       <section className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">Document Templates</h2>
+          <a href="/templates" className="text-sm text-blue-600 hover:underline">Open Template Editor</a>
         </div>
         <div className="divide-y divide-gray-100">
           {vm.templates.map((template) => (

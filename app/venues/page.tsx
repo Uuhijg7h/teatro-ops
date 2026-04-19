@@ -9,6 +9,8 @@ export default function VenuesPage() {
   const [venues, setVenues] = useState(fallback);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const supabase = createClientComponentClient();
 
   useEffect(() => {
@@ -50,6 +52,23 @@ export default function VenuesPage() {
   async function saveVenue(id: string | undefined) {
     const venue = venues.find((v) => v.id === id);
     if (!venue) return;
+
+    setMessage('');
+    setError('');
+
+    if (!venue.name.trim()) {
+      setError('Venue name is required.');
+      return;
+    }
+    if (!venue.slug.trim()) {
+      setError('Venue slug is required.');
+      return;
+    }
+    if (venue.seatedCapacity < 0 || venue.standingCapacity < 0 || venue.priceFrom < 0) {
+      setError('Capacities and pricing must be zero or greater.');
+      return;
+    }
+
     setSavingId(id || null);
     try {
       const payload = {
@@ -65,10 +84,14 @@ export default function VenuesPage() {
         active: venue.active,
       };
 
-      const { data } = await supabase.from('venues').upsert(payload).select('id').single();
+      const { data, error } = await supabase.from('venues').upsert(payload).select('id').single();
+      if (error) throw error;
       if (data?.id) {
         setVenues((current) => current.map((v) => (v.id === venue.id ? { ...v, id: data.id } : v)));
       }
+      setMessage(`Saved venue: ${venue.name}`);
+    } catch {
+      setError(`Could not save venue: ${venue.name}`);
     } finally {
       setSavingId(null);
     }
@@ -76,13 +99,17 @@ export default function VenuesPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Venues & Halls</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Teatro venue administration now runs from BanquetPro models so capacities, pricing, and room-turn rules can move into the web app.
-        </p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Venues & Halls</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Teatro venue administration now runs from BanquetPro models so capacities, pricing, and room-turn rules can move into the web app.
+          </p>
+        </div>
       </div>
 
+      {message ? <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{message}</div> : null}
+      {error ? <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
       {loading ? <div className="text-sm text-gray-400">Loading venues...</div> : null}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

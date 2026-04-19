@@ -10,47 +10,29 @@ export async function GET(request: Request) {
 
   try {
     if (id) {
-      // Fetch single booking with all details
+      // Fetch single booking with details
       const { data: booking, error } = await supabase
         .from('bookings')
-        .select(`
-          *,
-          customer: customers(*),
-          venue: venues(*),
-          package: packages(*),
-          menu: menus(*),
-          bev: beverages(*),
-          setup_details: setup_details(*),
-          add_items: additional_items(*),
-          av_reqs: av_requirements(*),
-          timeline: event_timeline(*),
-          billing: billing_info(*)
-        `)
+        .select('*')
         .eq('id', id)
         .single()
 
       if (error) throw error
-
       return NextResponse.json({ success: true, data: booking })
     } else {
       // Fetch all bookings
       const { data: bookings, error } = await supabase
         .from('bookings')
-        .select(`
-          *,
-          customer: customers(*),
-          venue: venues(*)
-        `)
+        .select('*')
         .order('event_date', { ascending: true })
 
       if (error) throw error
-
       return NextResponse.json({ success: true, data: bookings })
     }
   } catch (error: any) {
     console.error('Error fetching bookings:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch bookings' },
+      { error: 'Failed to fetch bookings', details: error.message },
       { status: 500 }
     )
   }
@@ -62,37 +44,32 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-
     const { data, error } = await supabase
       .from('bookings')
       .insert({
-        customer_id: body.customer_id,
-        venue_id: body.venue_id,
-        package_id: body.package_id,
-        menu_id: body.menu_id,
-        bev_id: body.bev_id,
+        res_no: body.res_no,
+        client_name: body.client_name,
+        onsite_contact: body.onsite_contact,
+        email: body.email,
+        phone: body.phone,
         event_date: body.event_date,
         event_time: body.event_time,
-        guests: body.guests,
+        guests: body.guests || 0,
         event_type: body.event_type,
-        setup_details: body.setup_details,
-        add_items: body.add_items,
-        av_reqs: body.av_reqs,
-        timeline: body.timeline,
-        billing: body.billing,
+        hall: body.hall,
+        status: body.status || 'tentative',
         total_cad: parseFloat(body.total_cad) || 0,
         deposit_cad: parseFloat(body.deposit_cad) || 0,
         payment_status: body.payment_status || 'Outstanding',
-        status: 'tentative',
         internal_notes: body.internal_notes
       })
       .select()
       .single()
 
     if (error) throw error
-
     return NextResponse.json({ success: true, data })
   } catch (error: any) {
+    console.error('Error creating booking:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -120,9 +97,9 @@ export async function PATCH(request: Request) {
       .single()
 
     if (error) throw error
-
     return NextResponse.json({ success: true, data })
   } catch (error: any) {
+    console.error('Error updating booking:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -147,9 +124,9 @@ export async function DELETE(request: Request) {
       .eq('id', id)
 
     if (error) throw error
-
     return NextResponse.json({ success: true })
   } catch (error: any) {
+    console.error('Error deleting booking:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

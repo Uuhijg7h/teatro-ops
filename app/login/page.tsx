@@ -49,6 +49,15 @@ export default function LoginPage() {
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400"
               placeholder="••••••••" />
           </div>
+                    <div className="flex items-center justify-between mb-4">
+            <label className="flex items-center">
+              <input type="checkbox" className="mr-2" />
+              <span className="text-sm text-gray-600">Remember me</span>
+            </label>
+            <a href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-800">
+              Forgot password?
+            </a>
+          </div>
           <button type="submit" disabled={loading}
             className="w-full py-3 bg-gray-900 text-white rounded-lg font-semibold text-sm hover:bg-gray-800 disabled:opacity-50">
             {loading ? 'Signing in...' : 'Sign In'}

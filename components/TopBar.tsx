@@ -1,74 +1,49 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { usePathname } from 'next/navigation';
 
-type SidebarProps = {
-  isOpen?: boolean;
-  onClose?: () => void;
+type TopBarProps = {
+  onMenuClick?: () => void;
 };
 
-export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
+export default function TopBar({ onMenuClick }: TopBarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const supabase = createClientComponentClient();
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
+  const titles: Record<string, string> = {
+    '/dashboard': 'Dashboard',
+    '/bookings': 'All Bookings',
+    '/calendar': 'Calendar',
+    '/guests': 'Guests & Clients',
+    '/menu': 'Menu & Catering',
+    '/staff': 'Staff & Assignments',
+    '/finance': 'Finance & Payments',
+    '/beo': 'BEO Documents',
   };
 
-  const navItem = (href: string, icon: string, label: string) => {
-    const active =
-      pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+  const title =
+    Object.entries(titles).find(
+      ([route]) => pathname === route || pathname.startsWith(`${route}/`)
+    )?.[1] || 'Dashboard';
 
-    return (
-      <Link
-        key={href}
-        href={href}
-        onClick={onClose}
-        className={`nav-item ${active ? 'active' : ''}`}
-      >
-        <span className="icon">{icon}</span>
-        <span>{label}</span>
-      </Link>
-    );
-  };
+  const showNewBooking =
+    pathname === '/dashboard' || pathname === '/bookings';
 
   return (
-    <aside className={`sidebar ${isOpen ? 'open' : ''}`} id="sidebar">
-      <div className="sidebar-logo">
-        <span className="sidebar-logo-icon">🏛</span>
-        <span className="sidebar-logo-text">BanquetPro</span>
-      </div>
-
-      <div className="sidebar-user">
-        <strong>Teatro Team</strong>
-        Logged in
-      </div>
-
-      <nav className="sidebar-nav">
-        <div className="nav-section">Main</div>
-        {navItem('/dashboard', '📊', 'Dashboard')}
-        {navItem('/bookings', '📋', 'Bookings')}
-        {navItem('/calendar', '📅', 'Calendar')}
-
-        <div className="nav-section">Management</div>
-        {navItem('/guests', '👥', 'Guests & Clients')}
-        {navItem('/menu', '🍽', 'Menu & Catering')}
-        {navItem('/staff', '👔', 'Staff')}
-        {navItem('/finance', '💰', 'Finance')}
-
-        <div className="nav-section">Reports</div>
-        {navItem('/beo', '📄', 'BEO Documents')}
-      </nav>
-
-      <div className="sidebar-bottom">
-        <button className="logout-btn" onClick={handleSignOut}>
-          🚪 Sign Out
+    <header className="topbar">
+      <div className="topbar-left">
+        <button className="hamburger" onClick={onMenuClick} aria-label="Open menu">
+          ☰
         </button>
+        <span className="topbar-title">{title}</span>
       </div>
-    </aside>
+
+      <div className="topbar-actions">
+        {showNewBooking && (
+          <button className="btn btn-primary">
+            ＋ New Booking
+          </button>
+        )}
+      </div>
+    </header>
   );
 }

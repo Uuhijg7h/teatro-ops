@@ -1,9 +1,61 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { buildDefaultSettingsPageViewModel } from '../../lib/banquetpro/settings-view-model';
 
 export default function SettingsPage() {
-  const vm = buildDefaultSettingsPageViewModel();
+  const fallback = buildDefaultSettingsPageViewModel();
+  const [vm, setVm] = useState(fallback);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClientComponentClient();
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [{ data: orgRows }, { data: templateRows }] = await Promise.all([
+          supabase.from('organizations').select('*').limit(1),
+          supabase.from('booking_templates').select('*').order('name', { ascending: true }),
+        ]);
+
+        const organization = orgRows?.[0];
+        const templates = (templateRows || []).map((template: any) => ({
+          id: template.id,
+          key: template.template_key,
+          name: template.name,
+          description: template.description,
+          active: template.active,
+        }));
+
+        if (!organization && templates.length === 0) {
+          setVm(fallback);
+          setLoading(false);
+          return;
+        }
+
+        setVm({
+          business: {
+            businessName: organization?.business_name || fallback.business.businessName,
+            address: organization?.address || fallback.business.address,
+            phone: organization?.phone || fallback.business.phone,
+            email: organization?.email || fallback.business.email,
+            currencyCode: organization?.currency_code || fallback.business.currencyCode,
+            taxRate: Number(organization?.tax_rate ?? fallback.business.taxRate),
+            gratuityRate: Number(organization?.gratuity_rate ?? fallback.business.gratuityRate),
+            timezone: organization?.timezone || fallback.business.timezone,
+          },
+          branding: fallback.branding,
+          templates: templates.length ? templates : fallback.templates,
+        });
+      } catch {
+        setVm(fallback);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
+  }, []);
 
   return (
     <div className="p-6 space-y-6">
@@ -17,16 +69,18 @@ export default function SettingsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Business Profile</h2>
-          <div className="space-y-3 text-sm">
-            <div><span className="text-gray-500">Business:</span> <span className="font-medium text-gray-900">{vm.business.businessName}</span></div>
-            <div><span className="text-gray-500">Address:</span> <span className="font-medium text-gray-900">{vm.business.address}</span></div>
-            <div><span className="text-gray-500">Phone:</span> <span className="font-medium text-gray-900">{vm.business.phone || '—'}</span></div>
-            <div><span className="text-gray-500">Email:</span> <span className="font-medium text-gray-900">{vm.business.email || '—'}</span></div>
-            <div><span className="text-gray-500">Currency:</span> <span className="font-medium text-gray-900">{vm.business.currencyCode}</span></div>
-            <div><span className="text-gray-500">Tax:</span> <span className="font-medium text-gray-900">{Math.round(vm.business.taxRate * 100)}%</span></div>
-            <div><span className="text-gray-500">Gratuity:</span> <span className="font-medium text-gray-900">{Math.round(vm.business.gratuityRate * 100)}%</span></div>
-            <div><span className="text-gray-500">Timezone:</span> <span className="font-medium text-gray-900">{vm.business.timezone}</span></div>
-          </div>
+          {loading ? <div className="text-sm text-gray-400">Loading business settings...</div> : (
+            <div className="space-y-3 text-sm">
+              <div><span className="text-gray-500">Business:</span> <span className="font-medium text-gray-900">{vm.business.businessName}</span></div>
+              <div><span className="text-gray-500">Address:</span> <span className="font-medium text-gray-900">{vm.business.address}</span></div>
+              <div><span className="text-gray-500">Phone:</span> <span className="font-medium text-gray-900">{vm.business.phone || '—'}</span></div>
+              <div><span className="text-gray-500">Email:</span> <span className="font-medium text-gray-900">{vm.business.email || '—'}</span></div>
+              <div><span className="text-gray-500">Currency:</span> <span className="font-medium text-gray-900">{vm.business.currencyCode}</span></div>
+              <div><span className="text-gray-500">Tax:</span> <span className="font-medium text-gray-900">{Math.round(vm.business.taxRate * 100)}%</span></div>
+              <div><span className="text-gray-500">Gratuity:</span> <span className="font-medium text-gray-900">{Math.round(vm.business.gratuityRate * 100)}%</span></div>
+              <div><span className="text-gray-500">Timezone:</span> <span className="font-medium text-gray-900">{vm.business.timezone}</span></div>
+            </div>
+          )}
         </section>
 
         <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">

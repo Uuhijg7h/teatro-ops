@@ -19,7 +19,7 @@ export default function TopBar() {
     client_name: '', onsite_contact: '', email: '', phone: '',
     event_date: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0], booking_date: new Date().toISOString().split('T')[0],    hall: '', guests: '', start_time: '', end_time: '', setup_time: '',
     event_type: '', food_style: '', dietary_notes: '',
-    total_amount: '', deposit_paid: '',
+    total_cad: '', deposit_cad: '',
     payment_status: 'outstanding', manager_name: '', onsite_mgr_name: '',
     apps: '', notes: '',
   });
@@ -42,8 +42,8 @@ export default function TopBar() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    const total = parseFloat(form.total_amount) || 0;
-    const deposit = parseFloat(form.deposit_paid) || 0;
+    const total = parseFloat(form.total_cad) || 0;
+    const deposit = parseFloat(form.deposit_cad) || 0;
     const { data, error } = await supabase.from('bookings').insert([{
       client_name: form.client_name,
       onsite_contact: form.onsite_contact || form.client_name,
@@ -59,8 +59,8 @@ export default function TopBar() {
       event_type: form.event_type,
       food_style: form.food_style,
       dietary_notes: form.dietary_notes,
-      total_amount: total,
-      deposit_paid: deposit,
+      total_cad: total,
+      deposit_cad: deposit,
       balance_due: total - deposit,
       payment_status: form.payment_status,
       manager_name: form.manager_name,
@@ -72,7 +72,7 @@ export default function TopBar() {
     setSaving(false);
     if (!error && data) {
       setShowModal(false);
-      setForm({ client_name: '', onsite_contact: '', email: '', phone: '', event_date: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0] booking_date: new Date().toISOString().split('T')[0], hall: '', guests: '', start_time: '', end_time: '', setup_time: '', event_type: '', food_style: '', dietary_notes: '', total_amount: '', deposit_paid: '', payment_status: 'outstanding', manager_name: '', onsite_mgr_name: '', apps: '', notes: '' });
+      setForm({ client_name: '', onsite_contact: '', email: '', phone: '', event_date: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0] booking_date: new Date().toISOString().split('T')[0], hall: '', guests: '', start_time: '', end_time: '', setup_time: '', event_type: '', food_style: '', dietary_notes: '', total_cad: '', deposit_cad: '', payment_status: 'outstanding', manager_name: '', onsite_mgr_name: '', apps: '', notes: '' });
       router.refresh();
     } else {
       alert('Error saving booking: ' + (error?.message || 'Unknown error'));
@@ -133,9 +133,9 @@ export default function TopBar() {
               <div>
                 <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">FINANCE</div>
                 <div className="grid grid-cols-3 gap-4">
-                  <div><label className={lbl}>Estimated Total (CAD)</label><input type="number" step="0.01" value={form.total_amount} onChange={e => set('total_amount', e.target.value)} placeholder="0.00" className={inp} /></div>
-                  <div><label className={lbl}>Deposit Paid (CAD)</label><input type="number" step="0.01" value={form.deposit_paid} onChange={e => set('deposit_paid', e.target.value)} placeholder="0.00" className={inp} /></div>
-                  <div><label className={lbl}>Payment Status</label><select value={form.payment_status} onChange={e => set('payment_status', e.target.value)} className={sel}><option value="outstanding">Outstanding</option><option value="deposit_paid">Deposit Paid</option><option value="fully_paid">Fully Paid</option></select></div>
+                  <div><label className={lbl}>Estimated Total (CAD)</label><input type="number" step="0.01" value={form.total_cad} onChange={e => set('total_cad', e.target.value)} placeholder="0.00" className={inp} /></div>
+                  <div><label className={lbl}>Deposit Paid (CAD)</label><input type="number" step="0.01" value={form.deposit_cad} onChange={e => set('deposit_cad', e.target.value)} placeholder="0.00" className={inp} /></div>
+                  <div><label className={lbl}>Payment Status</label><select value={form.payment_status} onChange={e => set('payment_status', e.target.value)} className={sel}><option value="outstanding">Outstanding</option><option value="deposit_cad">Deposit Paid</option><option value="fully_paid">Fully Paid</option></select></div>
                 </div>
               </div>
               <div>

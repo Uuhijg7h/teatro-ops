@@ -1,26 +1,39 @@
-'use client'
+'use client';
 
-import { usePathname } from 'next/navigation'
-import Sidebar from './Sidebar'
-import TopBar from './TopBar'
+import { usePathname } from 'next/navigation';
+import { useState } from 'react';
+import Sidebar from './Sidebar';
+import TopBar from './TopBar';
 
-export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-  const isAuthPage = pathname?.startsWith('/login') || pathname?.startsWith('/forgot-password')
+export default function LayoutWrapper({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const isAuthPage =
+    pathname?.startsWith('/login') || pathname?.startsWith('/forgot-password');
 
   if (isAuthPage) {
-    return <>{children}</>
+    return <>{children}</>;
   }
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex-1 ml-[220px] flex flex-col min-h-screen">
-        <TopBar />
-        <main className="p-8 flex-1">
-          {children}
+    <div id="app">
+      <div
+        className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+      <div className="layout">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+        <main className="main">
+          <TopBar onMenuClick={() => setSidebarOpen(true)} />
+          <div className="content">{children}</div>
         </main>
       </div>
     </div>
-  )
+  );
 }

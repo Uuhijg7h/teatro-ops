@@ -1,31 +1,32 @@
-# Teatro Banquet Hall - Event Management System
+# BanquetPro
 
-## Production-Ready Event Management Platform
+## Teatro Banquet Hall — Online Banquet Management System
 
-**Live URL**: https://teatro-ops.vercel.app
+BanquetPro is the online operating system for Teatro Banquet Hall.
 
-## Quick Setup
+**Business**: Teatro Banquet Hall  
+**Address**: 495 Welland Avenue, St. Catharines, Ontario, Canada  
+**Currency**: CAD  
+**Tax**: 13%  
+**Gratuity**: 18%
 
-### Environment Variables (Add to Vercel)
+## Product scope
+BanquetPro is being rebuilt from the legacy ZIP source of truth into an online multi-user banquet hall management system with:
+- booking pipeline management
+- CRM-style inquiry tracking
+- venue and hall administration
+- staff and access control
+- finance and payment tracking
+- editable BEO / quote / invoice templates
+- settings and branding control from the web app
 
-```
-NEXT_PUBLIC_SUPABASE_URL=https://glezgpnustjohvuvpdbp.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=[Get from Supabase Dashboard]
-```
-
-### Features
-- Dashboard with stats and analytics
-- Booking management system
-- Event calendar
-- Customer/client tracking
-- Payment and finance management
-- BEO document generation
-- Staff assignments
-
-### Tech Stack
+## Tech stack
 - Next.js 14 + TypeScript
-- Supabase (PostgreSQL)
+- Supabase (online database / auth / storage target)
 - Tailwind CSS
-- Vercel Deployment
+- Vercel deployment
 
-© 2026 Teatro Banquet Hall
+## Source of truth
+The uploaded legacy BanquetPro ZIP remains the functional source of truth for business rules, booking fields, calculations, and operational behavior. The current repo is being rebuilt around that source into an online architecture.
+
+© 2026 BanquetPro / Teatro Banquet Hall

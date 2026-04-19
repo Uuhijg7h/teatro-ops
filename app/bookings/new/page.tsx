@@ -1,6 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import {
   createDefaultBookingFormState,
   patchBookingCore,
@@ -12,17 +14,142 @@ import {
 import { formatCad } from '../../../lib/banquetpro/pricing';
 
 export default function NewBookingPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const bookingId = searchParams.get('id');
+  const supabase = createClientComponentClient();
+
   const [state, setState] = useState(createDefaultBookingFormState());
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const pricing = useMemo(() => state.booking.pricing, [state]);
+
+  useEffect(() => {
+    async function loadBooking() {
+      if (!bookingId) return;
+      setLoading(true);
+      try {
+        const { data } = await supabase.from('bookings').select('*').eq('id', bookingId).single();
+        if (!data) return;
+
+        setState((current) => ({
+          ...current,
+          booking: {
+            ...current.booking,
+            id: data.id,
+            clientName: data.client_name || data.name || '',
+            companyName: data.company_name || '',
+            email: data.email || '',
+            phone: data.phone || '',
+            eventTitle: data.event_title || '',
+            eventType: data.event_type || data.type || '',
+            eventDate: data.event_date || data.eventdate || '',
+            venueName: data.venue_name || data.hall || '',
+            foodType: data.food_type || 'italian',
+            centrepiecesIncluded: Boolean(data.centrepieces_included),
+            centrepiecesNotes: data.centrepieces_notes || '',
+            paymentStatus: data.payment_status || data.payment || 'unpaid',
+            status: data.status || 'new_inquiry',
+            pricing: {
+              ...current.booking.pricing,
+              subtotal: Number(data.subtotal || 0),
+              taxAmount: Number(data.tax_amount || 0),
+              gratuityAmount: Number(data.gratuity_amount || 0),
+              grandTotal: Number(data.grand_total || data.total_amount || data.total || 0),
+              depositAmount: Number(data.deposit_amount || data.deposit_paid || data.deposit || 0),
+              amountPaid: Number(data.amount_paid || data.deposit_paid || data.deposit || 0),
+              balanceDue: Number(data.balance_due || 0),
+            },
+          },
+          pricingInput: {
+            ...current.pricingInput,
+            adultCount: Number(data.adult_count || 0),
+            adultRate: Number(data.adult_rate || 0),
+            kidsCount: Number(data.kids_count || 0),
+            kidsRate: Number(data.kids_rate || 0),
+            cakeCuttingFee: Number(data.cake_cutting_fee || 0),
+            hallRentalFee: Number(data.hall_rental_fee || 0),
+            beverageSubtotal: Number(data.beverage_subtotal || 0),
+            addonsAmount: Number(data.addons_amount || 0),
+            discountAmount: Number(data.discount_amount || 0),
+            extraFees: Number(data.extra_fees || 0),
+            depositAmount: Number(data.deposit_amount || data.deposit_paid || data.deposit || 0),
+            customPaymentsTotal: Number((data.amount_paid || 0) - (data.deposit_amount || data.deposit_paid || data.deposit || 0)),
+            taxRate: Number(data.tax_rate || 0.13),
+            gratuityRate: Number(data.gratuity_rate || 0.18),
+          },
+        }));
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadBooking();
+  }, [bookingId]);
+
+  async function saveBooking() {
+    setSaving(true);
+    try {
+      const payload = {
+        id: bookingId || undefined,
+        client_name: state.booking.clientName,
+        company_name: state.booking.companyName,
+        email: state.booking.email,
+        phone: state.booking.phone,
+        event_title: state.booking.eventTitle,
+        event_type: state.booking.eventType,
+        event_date: state.booking.eventDate,
+        venue_name: state.booking.venueName,
+        food_type: state.booking.foodType,
+        centrepieces_included: state.booking.centrepiecesIncluded,
+        centrepieces_notes: state.booking.centrepiecesNotes,
+        payment_status: state.booking.paymentStatus,
+        status: state.booking.status,
+        adult_count: state.pricingInput.adultCount,
+        adult_rate: state.pricingInput.adultRate,
+        kids_count: state.pricingInput.kidsCount,
+        kids_rate: state.pricingInput.kidsRate,
+        cake_cutting_fee: state.pricingInput.cakeCuttingFee,
+        extra_fees: state.pricingInput.extraFees,
+        hall_rental_fee: state.pricingInput.hallRentalFee,
+        beverage_subtotal: state.pricingInput.beverageSubtotal,
+        addons_amount: state.pricingInput.addonsAmount,
+        discount_amount: state.pricingInput.discountAmount,
+        subtotal: pricing.subtotal,
+        tax_rate: state.pricingInput.taxRate,
+        tax_amount: pricing.taxAmount,
+        gratuity_rate: state.pricingInput.gratuityRate,
+        gratuity_amount: pricing.gratuityAmount,
+        grand_total: pricing.grandTotal,
+        deposit_amount: pricing.depositAmount,
+        amount_paid: pricing.amountPaid,
+        balance_due: pricing.balanceDue,
+      };
+
+      const { data } = await supabase.from('bookings').upsert(payload).select('id').single();
+      if (data?.id) {
+        router.push(`/bookings/${data.id}`);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">New Booking</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          BanquetPro booking form wiring for Teatro: adults, kids, cake cutting fee, extras, centrepieces, food type, and payment status.
-        </p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">{bookingId ? 'Edit Booking' : 'New Booking'}</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            BanquetPro booking form wiring for Teatro: adults, kids, cake cutting fee, extras, centrepieces, food type, and payment status.
+          </p>
+        </div>
+        <button onClick={saveBooking} disabled={saving || loading} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50">
+          {saving ? 'Saving…' : bookingId ? 'Save Changes' : 'Create Booking'}
+        </button>
       </div>
+
+      {loading ? <div className="text-sm text-gray-400">Loading booking...</div> : null}
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <section className="xl:col-span-2 bg-white rounded-xl border border-gray-200 p-5 shadow-sm space-y-5">

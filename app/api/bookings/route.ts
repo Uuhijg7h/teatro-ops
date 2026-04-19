@@ -61,7 +61,7 @@ export async function POST(request: Request) {
         total_cad: parseFloat(body.total_cad) || 0,
         deposit_cad: parseFloat(body.deposit_cad) || 0,
         payment_status: body.payment_status || 'Outstanding',
-        internal_notes: body.internal_notes
+        notes: body.notes
       })
       .select()
       .single()

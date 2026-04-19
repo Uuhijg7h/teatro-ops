@@ -72,7 +72,7 @@ export default function TopBar() {
     setSaving(false);
     if (!error && data) {
       setShowModal(false);
-      setForm({ client_name: '', onsite_contact: '', email: '', phone: '', event_date: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0] booking_date: new Date().toISOString().split('T')[0], hall: '', guests: '', start_time: '', end_time: '', setup_time: '', event_type: '', food_style: '', dietary_notes: '', total_cad: '', deposit_cad: '', payment_status: 'outstanding', manager_name: '', onsite_mgr_name: '', apps: '', notes: '' });
+      setForm({ client_name: '', onsite_contact: '', email: '', phone: '', event_date: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0], booking_date: new Date().toISOString().split('T')[0], hall: '', guests: '', start_time: '', end_time: '', setup_time: '', event_type: '', food_style: '', dietary_notes: '', total_cad: '', deposit_cad: '', payment_status: 'outstanding', manager_name: '', onsite_mgr_name: '', apps: '', notes: '' });
       router.refresh();
     } else {
       alert('Error saving booking: ' + (error?.message || 'Unknown error'));

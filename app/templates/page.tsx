@@ -9,6 +9,8 @@ export default function TemplatesPage() {
   const [templates, setTemplates] = useState(defaults);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const supabase = createClientComponentClient();
 
   useEffect(() => {
@@ -42,10 +44,17 @@ export default function TemplatesPage() {
   async function saveTemplate(id: string) {
     const template = templates.find((t) => t.id === id);
     if (!template) return;
+    if (!template.name.trim() || !template.content.trim()) {
+      setError('Template name and content are required.');
+      setMessage('');
+      return;
+    }
 
     setSavingId(id);
+    setMessage('');
+    setError('');
     try {
-      await supabase.from('booking_templates').upsert({
+      const { error } = await supabase.from('booking_templates').upsert({
         id: template.id.startsWith('tpl-') ? undefined : template.id,
         organization_id: null,
         template_key: template.key,
@@ -54,6 +63,10 @@ export default function TemplatesPage() {
         content: template.content,
         active: template.active,
       });
+      if (error) throw error;
+      setMessage(`Saved template: ${template.name}`);
+    } catch {
+      setError(`Could not save template: ${template.name}`);
     } finally {
       setSavingId(null);
     }
@@ -72,6 +85,8 @@ export default function TemplatesPage() {
         </p>
       </div>
 
+      {message ? <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{message}</div> : null}
+      {error ? <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
       {loading ? <div className="text-sm text-gray-400">Loading templates...</div> : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -80,7 +95,7 @@ export default function TemplatesPage() {
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <div>
                 <input
-                  className="text-sm font-semibold text-gray-900 bg-transparent border-none outline-none w-full"
+                  className="text-sm font-semibold text-gray-900 bg-transparent border border-gray-200 rounded-lg px-2 py-1 outline-none w-full"
                   value={template.name}
                   onChange={(e) => updateTemplate(template.id, { name: e.target.value })}
                 />
@@ -97,6 +112,7 @@ export default function TemplatesPage() {
                 value={template.content}
                 onChange={(e) => updateTemplate(template.id, { content: e.target.value })}
               />
+              <div className="text-xs text-gray-500">Available tokens: {'{{client_name}}'}, {'{{event_title}}'}, {'{{event_date}}'}, {'{{venue_name}}'}, {'{{grand_total}}'}, {'{{balance_due}}'}</div>
               <div className="flex justify-end">
                 <button
                   onClick={() => saveTemplate(template.id)}

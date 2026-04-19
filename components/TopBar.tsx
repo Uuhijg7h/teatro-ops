@@ -25,25 +25,15 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
       ([route]) => pathname === route || pathname.startsWith(`${route}/`)
     )?.[1] || 'Dashboard';
 
-  const showNewBooking =
-    pathname === '/dashboard' || pathname === '/bookings';
-
   return (
-    <header className="topbar">
+    <div className="topbar">
       <div className="topbar-left">
-        <button className="hamburger" onClick={onMenuClick} aria-label="Open menu">
+        <button className="hamburger" onClick={onMenuClick}>
           ☰
         </button>
         <span className="topbar-title">{title}</span>
       </div>
-
-      <div className="topbar-actions">
-        {showNewBooking && (
-          <button className="btn btn-primary">
-            ＋ New Booking
-          </button>
-        )}
-      </div>
-    </header>
+      <div className="topbar-actions" />
+    </div>
   );
 }

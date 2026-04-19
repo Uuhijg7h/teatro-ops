@@ -35,7 +35,7 @@ export default function TopBar() {
     '/beo': 'BEO Documents',
   };
 
-  const title = Object.entries(titles).find(([k]) => pathname === k || pathname.startsWith(k + '/')).[1] || 'Dashboard';
+  const title = Object.entries(titles).find(([k]) => pathname === k || pathname.startsWith(k + '/'))[1] || 'Dashboard';
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 

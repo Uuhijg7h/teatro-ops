@@ -18,3 +18,5 @@ export default function RootLayout({
   return (
     <html lang="en">      <LayoutWrapper>{children}</LayoutWrapper>
           </html>
+  )
+}

@@ -1,9 +1,46 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { createDefaultVenueAdminForms } from '../../lib/banquetpro/venue-admin';
 
 export default function VenuesPage() {
-  const venues = createDefaultVenueAdminForms();
+  const fallback = createDefaultVenueAdminForms();
+  const [venues, setVenues] = useState(fallback);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClientComponentClient();
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const { data } = await supabase.from('venues').select('*').order('name', { ascending: true });
+        if (!data || data.length === 0) {
+          setVenues(fallback);
+        } else {
+          setVenues(
+            data.map((venue: any) => ({
+              id: venue.id,
+              slug: venue.slug,
+              name: venue.name,
+              description: venue.description || '',
+              seatedCapacity: venue.seated_capacity || 0,
+              standingCapacity: venue.standing_capacity || 0,
+              priceFrom: Number(venue.price_from || 0),
+              roomTurnBufferMinutesBefore: venue.room_turn_buffer_before_minutes || 120,
+              roomTurnBufferMinutesAfter: venue.room_turn_buffer_after_minutes || 120,
+              active: venue.active ?? true,
+            })),
+          );
+        }
+      } catch {
+        setVenues(fallback);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
+  }, []);
 
   return (
     <div className="p-6 space-y-6">
@@ -13,6 +50,8 @@ export default function VenuesPage() {
           Teatro venue administration now runs from BanquetPro models so capacities, pricing, and room-turn rules can move into the web app.
         </p>
       </div>
+
+      {loading ? <div className="text-sm text-gray-400">Loading venues...</div> : null}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {venues.map((venue) => (

@@ -34,29 +34,37 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="w-[220px] bg-white h-screen border-r border-gray-200 flex flex-col fixed left-0 top-0 z-50">
-      {/* Logo */}
+    <div className="w-[240px] bg-white h-screen border-r border-gray-200 flex flex-col fixed left-0 top-0 z-50">
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <span className="text-2xl">🏛</span>
-          <span className="font-bold text-sm tracking-widest text-gray-800 uppercase">BanquetPro</span>
+          <div>
+            <div className="font-bold text-sm tracking-widest text-gray-800 uppercase">BanquetPro</div>
+            <div className="text-[10px] uppercase tracking-widest text-gray-400">Teatro Banquet Hall</div>
+          </div>
         </div>
       </div>
-      {/* Navigation */}
+
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-2">Main</p>
         {navItem('/dashboard', '📊', 'Dashboard')}
         {navItem('/bookings', '📋', 'Bookings')}
+        {navItem('/bookings/new', '➕', 'New Booking')}
         {navItem('/calendar', '📅', 'Calendar')}
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-2 mt-4">Management</p>
+
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-2 mt-4">Operations</p>
+        {navItem('/venues', '🏛', 'Venues & Halls')}
         {navItem('/guests', '👥', 'Guests & Clients')}
         {navItem('/menu', '🍽', 'Menu & Catering')}
         {navItem('/staff', '👔', 'Staff')}
         {navItem('/finance', '💰', 'Finance')}
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-2 mt-4">Reports</p>
+        {navItem('/templates', '🧾', 'Templates')}
+
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-2 mt-4">System</p>
+        {navItem('/settings', '⚙️', 'Settings')}
         {navItem('/beo', '📄', 'BEO Documents')}
       </nav>
-      {/* Sign Out */}
+
       <div className="p-3 border-t border-gray-200">
         <button
           onClick={handleSignOut}

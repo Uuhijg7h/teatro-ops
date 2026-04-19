@@ -12,6 +12,7 @@ import {
   setPaymentStatus,
 } from '../../../lib/banquetpro/booking-form';
 import { formatCad } from '../../../lib/banquetpro/pricing';
+import { getDefaultVenues } from '../../../lib/banquetpro/venues';
 
 export default function NewBookingPage() {
   const router = useRouter();
@@ -22,7 +23,12 @@ export default function NewBookingPage() {
   const [state, setState] = useState(createDefaultBookingFormState());
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const pricing = useMemo(() => state.booking.pricing, [state]);
+  const totalGuests = Number(state.pricingInput.adultCount || 0) + Number(state.pricingInput.kidsCount || 0);
+  const matchedVenue = getDefaultVenues().find((venue) => venue.name.toLowerCase() === (state.booking.venueName || '').toLowerCase());
+  const seatedCapacityExceeded = matchedVenue ? totalGuests > matchedVenue.seatedCapacity : false;
 
   useEffect(() => {
     async function loadBooking() {
@@ -88,6 +94,26 @@ export default function NewBookingPage() {
   }, [bookingId]);
 
   async function saveBooking() {
+    setError('');
+    setMessage('');
+
+    if (!state.booking.clientName.trim()) {
+      setError('Client name is required.');
+      return;
+    }
+    if (!state.booking.eventDate) {
+      setError('Event date is required.');
+      return;
+    }
+    if (state.pricingInput.adultRate < 0 || state.pricingInput.kidsRate < 0 || state.pricingInput.extraFees < 0 || state.pricingInput.cakeCuttingFee < 0) {
+      setError('Rates and fees must be zero or greater.');
+      return;
+    }
+    if (seatedCapacityExceeded) {
+      setError(`Guest count exceeds the seated capacity for ${matchedVenue?.name}. Please reduce guests or choose a larger hall.`);
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = {
@@ -126,10 +152,14 @@ export default function NewBookingPage() {
         balance_due: pricing.balanceDue,
       };
 
-      const { data } = await supabase.from('bookings').upsert(payload).select('id').single();
+      const { data, error } = await supabase.from('bookings').upsert(payload).select('id').single();
+      if (error) throw error;
       if (data?.id) {
+        setMessage('Booking saved successfully.');
         router.push(`/bookings/${data.id}`);
       }
+    } catch {
+      setError('Could not save booking. Please review the form and try again.');
     } finally {
       setSaving(false);
     }
@@ -149,7 +179,10 @@ export default function NewBookingPage() {
         </button>
       </div>
 
+      {message ? <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{message}</div> : null}
+      {error ? <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
       {loading ? <div className="text-sm text-gray-400">Loading booking...</div> : null}
+      {matchedVenue ? <div className={`rounded-lg px-4 py-3 text-sm border ${seatedCapacityExceeded ? 'border-red-200 bg-red-50 text-red-700' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>Venue capacity check: {matchedVenue.name} seated capacity {matchedVenue.seatedCapacity}. Current guest count {totalGuests}.</div> : null}
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <section className="xl:col-span-2 bg-white rounded-xl border border-gray-200 p-5 shadow-sm space-y-5">
@@ -165,6 +198,10 @@ export default function NewBookingPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Event Date</label>
               <input type="date" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={state.booking.eventDate} onChange={(e) => setState(patchBookingCore(state, { eventDate: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Venue</label>
+              <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={state.booking.venueName || ''} onChange={(e) => setState(patchBookingCore(state, { venueName: e.target.value }))} placeholder="e.g. Teatro Restaurant" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>

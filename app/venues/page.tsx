@@ -8,6 +8,7 @@ export default function VenuesPage() {
   const fallback = createDefaultVenueAdminForms();
   const [venues, setVenues] = useState(fallback);
   const [loading, setLoading] = useState(true);
+  const [savingId, setSavingId] = useState<string | null>(null);
   const supabase = createClientComponentClient();
 
   useEffect(() => {
@@ -42,6 +43,37 @@ export default function VenuesPage() {
     load();
   }, []);
 
+  function patchVenue(id: string | undefined, patch: Record<string, unknown>) {
+    setVenues((current) => current.map((venue) => (venue.id === id ? { ...venue, ...patch } : venue)));
+  }
+
+  async function saveVenue(id: string | undefined) {
+    const venue = venues.find((v) => v.id === id);
+    if (!venue) return;
+    setSavingId(id || null);
+    try {
+      const payload = {
+        id: venue.id?.startsWith('venue-') ? undefined : venue.id,
+        slug: venue.slug,
+        name: venue.name,
+        description: venue.description,
+        seated_capacity: venue.seatedCapacity,
+        standing_capacity: venue.standingCapacity,
+        price_from: venue.priceFrom,
+        room_turn_buffer_before_minutes: venue.roomTurnBufferMinutesBefore,
+        room_turn_buffer_after_minutes: venue.roomTurnBufferMinutesAfter,
+        active: venue.active,
+      };
+
+      const { data } = await supabase.from('venues').upsert(payload).select('id').single();
+      if (data?.id) {
+        setVenues((current) => current.map((v) => (v.id === venue.id ? { ...v, id: data.id } : v)));
+      }
+    } finally {
+      setSavingId(null);
+    }
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -57,36 +89,58 @@ export default function VenuesPage() {
         {venues.map((venue) => (
           <section key={venue.slug} className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm space-y-4">
             <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">{venue.name}</h2>
-                <p className="text-sm text-gray-500 mt-1">{venue.description}</p>
+              <div className="flex-1 space-y-3">
+                <input
+                  className="w-full text-lg font-semibold text-gray-900 bg-transparent border border-gray-200 rounded-lg px-3 py-2"
+                  value={venue.name}
+                  onChange={(e) => patchVenue(venue.id, { name: e.target.value })}
+                />
+                <textarea
+                  className="w-full text-sm text-gray-600 border border-gray-200 rounded-lg px-3 py-2 min-h-[90px]"
+                  value={venue.description}
+                  onChange={(e) => patchVenue(venue.id, { description: e.target.value })}
+                />
               </div>
-              <span className={`text-xs px-2 py-1 rounded-full ${venue.active ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-50 text-gray-500 border border-gray-200'}`}>
-                {venue.active ? 'Active' : 'Inactive'}
-              </span>
+              <label className="text-xs flex items-center gap-2 text-gray-600">
+                <input type="checkbox" checked={venue.active} onChange={(e) => patchVenue(venue.id, { active: e.target.checked })} />
+                Active
+              </label>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-              <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
-                <div className="text-gray-500 text-xs uppercase tracking-wide">Seated</div>
-                <div className="text-lg font-semibold text-gray-900">{venue.seatedCapacity}</div>
+              <div>
+                <label className="block text-gray-500 text-xs uppercase tracking-wide mb-1">Seated</label>
+                <input type="number" className="w-full rounded-lg border border-gray-200 px-3 py-2" value={venue.seatedCapacity} onChange={(e) => patchVenue(venue.id, { seatedCapacity: Number(e.target.value || 0) })} />
               </div>
-              <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
-                <div className="text-gray-500 text-xs uppercase tracking-wide">Standing</div>
-                <div className="text-lg font-semibold text-gray-900">{venue.standingCapacity}</div>
+              <div>
+                <label className="block text-gray-500 text-xs uppercase tracking-wide mb-1">Standing</label>
+                <input type="number" className="w-full rounded-lg border border-gray-200 px-3 py-2" value={venue.standingCapacity} onChange={(e) => patchVenue(venue.id, { standingCapacity: Number(e.target.value || 0) })} />
               </div>
-              <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
-                <div className="text-gray-500 text-xs uppercase tracking-wide">Turn Before</div>
-                <div className="text-lg font-semibold text-gray-900">{venue.roomTurnBufferMinutesBefore}m</div>
+              <div>
+                <label className="block text-gray-500 text-xs uppercase tracking-wide mb-1">Turn Before</label>
+                <input type="number" className="w-full rounded-lg border border-gray-200 px-3 py-2" value={venue.roomTurnBufferMinutesBefore} onChange={(e) => patchVenue(venue.id, { roomTurnBufferMinutesBefore: Number(e.target.value || 0) })} />
               </div>
-              <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
-                <div className="text-gray-500 text-xs uppercase tracking-wide">Turn After</div>
-                <div className="text-lg font-semibold text-gray-900">{venue.roomTurnBufferMinutesAfter}m</div>
+              <div>
+                <label className="block text-gray-500 text-xs uppercase tracking-wide mb-1">Turn After</label>
+                <input type="number" className="w-full rounded-lg border border-gray-200 px-3 py-2" value={venue.roomTurnBufferMinutesAfter} onChange={(e) => patchVenue(venue.id, { roomTurnBufferMinutesAfter: Number(e.target.value || 0) })} />
               </div>
             </div>
 
-            <div className="text-sm text-gray-600">
-              <span className="font-medium text-gray-900">Editable fields prepared:</span> name, description, capacities, starting price, active state, and room-turn buffers.
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-gray-500 text-xs uppercase tracking-wide mb-1">Slug</label>
+                <input className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" value={venue.slug} onChange={(e) => patchVenue(venue.id, { slug: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-gray-500 text-xs uppercase tracking-wide mb-1">Starting Price</label>
+                <input type="number" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" value={venue.priceFrom} onChange={(e) => patchVenue(venue.id, { priceFrom: Number(e.target.value || 0) })} />
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button onClick={() => saveVenue(venue.id)} disabled={savingId === venue.id} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50">
+                {savingId === venue.id ? 'Saving…' : 'Save Venue'}
+              </button>
             </div>
           </section>
         ))}
